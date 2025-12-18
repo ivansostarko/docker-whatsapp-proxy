@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  mtproxy:
+    image: mtproxy/mtproxy:latest
+    container_name: mtproxy
+    restart: unless-stopped
+
+    # If 443 is already used on your host, change the LEFT side (e.g., "8443:443").
+    ports:
+      - "${MTP_HOST_PORT:-443}:443/tcp"
+
+    # Persist generated secrets + proxy config across restarts/upgrades
+    volumes:
+      - mtproxy-data:/data
+
+    environment:
+      # Optional: set your own 16-byte lowercase hex secret(s), comma-separated.
+      # If empty, the container will generate and store a secret in /data.
+      - SECRET=${MTP_SECRET:-}
+      - SECRET_COUNT=${MTP_SECRET_COUNT:-1}
+
+      # Optional: set after registering via @MTProxybot (not persistent unless you keep it set)
+      - TAG=${MTP_TAG:-}
+
+      # Optional: performance tuning (default is 1 worker in the image)
+      - WORKERS=${MTP_WORKERS:-}
+
+      # Optional: if auto-detection fails (common behind NAT), set your public IP explicitly
+      - IP=${MTP_EXTERNAL_IP:-}
+
+      # Optional: enable init script debugging
+      - DEBUG=${MTP_DEBUG:-false}
+
+      # The proxy listens on 443 inside the container by default
+      - PORT=443
+
+    # Practical limits for high connection counts
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+
+volumes:
+  mtproxy-data:
