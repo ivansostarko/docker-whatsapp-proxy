@@ -1,45 +1,28 @@
-version: "3.9"
-
 services:
-  mtproxy:
-    image: mtproxy/mtproxy:latest
-    container_name: mtproxy
+  whatsapp-proxy:
+    image: "facebook/whatsapp_proxy:${WHATSAPP_PROXY_IMAGE_TAG:-latest}"
+    container_name: whatsapp-proxy
     restart: unless-stopped
 
-    # If 443 is already used on your host, change the LEFT side (e.g., "8443:443").
+    env_file:
+      - .env
+
     ports:
-      - "${MTP_HOST_PORT:-443}:443/tcp"
+      - "${BIND_HTTP_PORT:-80}:80/tcp"
+      - "${BIND_HTTPS_PORT:-443}:443/tcp"
+      - "${BIND_XMPP_PORT:-5222}:5222/tcp"
 
-    # Persist generated secrets + proxy config across restarts/upgrades
     volumes:
-      - mtproxy-data:/data
+      - wa_certs:/etc/haproxy/certs
+      - wa_logs:/var/log/haproxy
+      - ./config:/config:ro
 
-    environment:
-      # Optional: set your own 16-byte lowercase hex secret(s), comma-separated.
-      # If empty, the container will generate and store a secret in /data.
-      - SECRET=${MTP_SECRET:-}
-      - SECRET_COUNT=${MTP_SECRET_COUNT:-1}
-
-      # Optional: set after registering via @MTProxybot (not persistent unless you keep it set)
-      - TAG=${MTP_TAG:-}
-
-      # Optional: performance tuning (default is 1 worker in the image)
-      - WORKERS=${MTP_WORKERS:-}
-
-      # Optional: if auto-detection fails (common behind NAT), set your public IP explicitly
-      - IP=${MTP_EXTERNAL_IP:-}
-
-      # Optional: enable init script debugging
-      - DEBUG=${MTP_DEBUG:-false}
-
-      # The proxy listens on 443 inside the container by default
-      - PORT=443
-
-    # Practical limits for high connection counts
-    ulimits:
-      nofile:
-        soft: 1048576
-        hard: 1048576
+    # OPTIONAL: If you want to fully override HAProxy config, uncomment ONE of the below
+    # mounts after you have extracted/validated the correct internal path for your image.
+    #
+    # - ./config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    # - ./config/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro
 
 volumes:
-  mtproxy-data:
+  wa_certs:
+  wa_logs:
